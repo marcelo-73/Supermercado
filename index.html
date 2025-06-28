@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Supermercado App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    font-family: sans-serif;
+    max-width: 600px;
+    margin: auto;
+    padding: 1rem;
+  }
+  h2 {
+    text-align: center;
+  }
+  input, button, select {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+  }
+  .menu {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1rem;
+  }
+  .menu button {
+    flex: 1;
+    margin: 0 5px;
+    padding: 0.7rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  .oculto {
+    display: none;
+  }
+
+  /* CATÁLOGO */
+  .producto {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ccc;
+    padding: 0.5rem 0;
+    gap: 0.5rem;
+  }
+  .producto img {
+    flex: 0 0 auto;
+    max-width: 50px;
+	max-height: 50px;
+    object-fit: cover;
+	margin-right: 1rem;
+  }
+  .producto span {
+    flex: 0 0 60%;
+    font-size: 1.1rem;
+    font-weight: bold;
+    word-wrap: break-word;
+  }
+  .producto button {
+    flex: 0 0 20%;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    text-align: center;
+  }
+  .producto button:hover {
+    color: red;
+  }
+
+  /* LISTA */
+  .item-lista {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #ccc;
+    padding: 0.5rem 0;
+    gap: 0.5rem;
+  }
+  .item-lista img {
+    flex: 0 0 auto;
+    max-width: 50px;
+	max-height: 50px;
+    object-fit: cover;
+/*	margin-right: 1rem; */
+  }
+  .item-lista span {
+    flex: 0 0 50%;
+    font-size: 1.1rem;
+    font-weight: bold;
+    word-wrap: break-word;
+  }
+  .item-lista input[type="checkbox"] {
+    flex: 0 0 10%;
+    transform: scale(1.3);
+    margin: 0 auto;
+  }
+  .item-lista button {
+    flex: 0 0 20%;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    text-align: center;
+  }
+  .item-lista button:hover {
+    color: red;
+  }
+  h4 {
+    margin-top: 1.5rem;
+    border-bottom: 1px solid #aaa;
+    padding-bottom: 0.3rem;
+  }
+</style>
+</head>
+<body>
+
+<h2>🛍 Supermercado App</h2>
+
+<div class="menu">
+  <button onclick="mostrarSeccion('productos')">📦 Productos</button>
+  <button onclick="mostrarSeccion('lista')">🛒 Lista</button>
+</div>
+
+<div id="productos" class="seccion">
+  <h3>Agregar producto al catálogo</h3>
+  <input id="nombreProducto" placeholder="Nombre del producto" />
+  <input id="imagenProducto" type="file" accept="image/*" />
+  <button onclick="agregarProducto()">Guardar en catálogo</button>
+  <div id="catalogo"></div>
+</div>
+
+<div id="lista" class="seccion oculto">
+  <h3>Armar lista de compras</h3>
+  <select id="selectorProducto"></select>
+  <button onclick="agregarALista()">Agregar a lista</button>
+
+  <h4>🕓 Pendientes</h4>
+  <ul id="listaPendiente"></ul>
+
+  <h4>✅ Comprados</h4>
+  <ul id="listaComprados"></ul>
+</div>
+
+<script>
+  let productos = JSON.parse(localStorage.getItem('productos')) || [];
+  let lista = JSON.parse(localStorage.getItem('listaCompras')) || [];
+
+  function guardarDatos() {
+    localStorage.setItem('productos', JSON.stringify(productos));
+    localStorage.setItem('listaCompras', JSON.stringify(lista));
+  }
+
+  function renderCatalogo() {
+    const catalogo = document.getElementById('catalogo');
+    const selector = document.getElementById('selectorProducto');
+    catalogo.innerHTML = '';
+    selector.innerHTML = '<option value="">-- Seleccioná un producto --</option>';
+
+    productos.forEach((p, i) => {
+      catalogo.innerHTML += `
+        <div class="producto">
+          <img src="${p.img}" />
+          <span>${p.nombre}</span>
+          <button onclick="borrarProducto(${i})">❌</button>
+        </div>`;
+      selector.innerHTML += `<option value="${i}">${p.nombre}</option>`;
+    });
+  }
+
+  function renderLista() {
+    const ulPendientes = document.getElementById('listaPendiente');
+    const ulComprados = document.getElementById('listaComprados');
+    ulPendientes.innerHTML = '';
+    ulComprados.innerHTML = '';
+
+    lista.forEach((item, i) => {
+      const itemHTML = `
+        <li class="item-lista">
+          <img src="${item.img}" />
+          <span style="text-decoration:${item.checked ? 'line-through' : 'none'}">${item.nombre}</span>
+          <input type="checkbox" onchange="toggle(${i})" ${item.checked ? 'checked' : ''}>
+          <button onclick="borrarDeLista(${i})">🗑</button>
+        </li>`;
+
+      if (item.checked) {
+        ulComprados.innerHTML += itemHTML;
+      } else {
+        ulPendientes.innerHTML += itemHTML;
+      }
+    });
+  }
+
+  function agregarProducto() {
+    const nombre = document.getElementById('nombreProducto').value.trim();
+    const imagenInput = document.getElementById('imagenProducto');
+
+    if (!nombre || !imagenInput.files[0]) return alert('Completá nombre e imagen');
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      productos.push({ nombre, img: e.target.result });
+      guardarDatos();
+      renderCatalogo();
+      document.getElementById('nombreProducto').value = '';
+      imagenInput.value = '';
+    };
+    reader.readAsDataURL(imagenInput.files[0]);
+  }
+
+  function agregarALista() {
+    const index = document.getElementById('selectorProducto').value;
+    if (index === "") return;
+    const prod = productos[index];
+    lista.push({ ...prod, checked: false });
+    guardarDatos();
+    renderLista();
+  }
+
+  function toggle(index) {
+    lista[index].checked = !lista[index].checked;
+    guardarDatos();
+    renderLista();
+  }
+
+  function borrarProducto(index) {
+    productos.splice(index, 1);
+    guardarDatos();
+    renderCatalogo();
+  }
+
+  function borrarDeLista(index) {
+    lista.splice(index, 1);
+    guardarDatos();
+    renderLista();
+  }
+
+  function mostrarSeccion(seccionId) {
+    document.getElementById('productos').classList.add('oculto');
+    document.getElementById('lista').classList.add('oculto');
+    document.getElementById(seccionId).classList.remove('oculto');
+  }
+
+  // Inicializar
+  renderCatalogo();
+  renderLista();
+</script>
+</body>
+</html>
